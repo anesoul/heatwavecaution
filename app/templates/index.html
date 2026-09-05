@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MoES - Extreme Heatwave & Human Thermal Stress Warning</title>
+    <!-- Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Leaflet.js CSS & JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <style>
+        .metric-card {
+            border-radius: 10px;
+            transition: transform 0.2s;
+        }
+        .metric-card:hover {
+            transform: translateY(-2px);
+        }
+        #wardMap {
+            height: 380px;
+            width: 100%;
+            border-radius: 8px;
+            z-index: 1;
+        }
+        /* --- Custom Orange Theme for Dashboard --- */
+        .bg-orange { background-color: #fd7e14 !important; color: #fff !important; }
+        .text-orange { color: #fd7e14 !important; }
+        .border-orange { border-color: #fd7e14 !important; }
+    </style>
+</head>
+<body class="bg-light">
+
+    <!-- Navigation/Header -->
+    <nav class="navbar navbar-dark bg-dark mb-4 shadow-sm">
+        <div class="container">
+            <span class="navbar-brand mb-0 h1">
+                MoES | Human Thermal Stress Early Warning System
+            </span>
+            <span class="badge bg-secondary" id="activeWardBadge">Ward: {{ data.active.name }}</span>
+        </div>
+    </nav>
+
+    <div class="container mb-5">
+
+        <!-- Top Alert & Advisory Banner -->
+        <div class="card shadow-sm border-{{ data.active.color }} mb-4" id="alertCard">
+            <div class="card-header bg-{{ data.active.color }} text-white d-flex justify-content-between align-items-center" id="alertCardHeader">
+                <h5 class="mb-0" id="alertTitle">Current Heat Risk Assessment: {{ data.active.name }}</h5>
+                <span class="badge bg-light text-dark fs-6" id="alertRiskBadge">{{ data.active.risk_level }}</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <!-- Occupational Directive Column -->
+                    <div class="col-md-6 border-end border-sm-0 mb-3 mb-md-0">
+                        <h6 class="mb-2 text-uppercase fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">Outdoor Activity Advisory (WBGT)</h6>
+                        <p class="text-muted fs-6 mb-0 text-dark"><span id="occDirective">{{ data.active.occ_directive }}</span></p>
+                    </div>
+                    <!-- Municipal Action Column -->
+                    <div class="col-md-6">
+                        <h6 class="mb-2 text-uppercase fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">Municipal Action (Mortality Index)</h6>
+                        <p class="text-muted fs-6 mb-0 text-dark"><span id="munAction">{{ data.active.mun_action }}</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- GIS Mapping & Ward Selector -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
+                <div>
+                    <h5 class="card-title mb-0">Continuous Urban Heat Hazard Map</h5>
+                    <small class="text-muted">Dynamic thermal gradient with microclimate vulnerability offsets.</small>
+                </div>
+                <div style="min-width: 280px;">
+                    <select id="wardDropdown" class="form-select border-primary fw-semibold" onchange="handleDropdownChange(this.value)">
+                        <option value="" disabled selected>-- Jump to Ward / Zone --</option>
+                        {% for ward in data.all_wards %}
+                        <option value="{{ ward.name }}">
+                            {{ ward.name }} ({{ ward.adjusted_stress }}°C)
+                        </option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="card-body p-2">
+                <div id="wardMap"></div>
+            </div>
+        </div>
+
+        <!-- Live Meteorological & Impact Metric Cards (5 Cards) -->
+        <div class="row g-3 mb-4">
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
+                    <small class="text-muted text-uppercase fw-bold">Dry-Bulb Temp</small>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricTemp">{{ data.active.temp }}</span> <span class="fs-5">°C</span></h2>
+                    <small class="text-secondary">Ambient Air</small>
+                </div>
+            </div>
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
+                    <small class="text-muted text-uppercase fw-bold">Relative Humidity</small>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricHumidity">{{ data.active.humidity }}</span> <span class="fs-5">%</span></h2>
+                    <small class="text-secondary">Moisture Saturation</small>
+                </div>
+            </div>
+            <div class="col-lg col-md-4 col-sm-6">
+                <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
+                    <small class="text-muted text-uppercase fw-bold">Wind Speed</small>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricWind">{{ data.active.wind }}</span> <span class="fs-5">km/h</span></h2>
+                    <small class="text-secondary">Convective Cooling</small>
+                </div>
+            </div>
+            <div class="col-lg col-md-6 col-sm-6">
+                <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
+                    <small class="text-muted text-uppercase fw-bold">Outdoor WBGT</small>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricWbgt">{{ data.active.wbgt }}</span> <span class="fs-5">°C</span></h2>
+                    <small class="text-secondary">ISO 7243 Labor Index</small>
+                </div>
+            </div>
+            <div class="col-lg col-md-6 col-sm-12">
+                <div class="card metric-card shadow-sm border-{{ data.active.color }} bg-white p-3 text-center border-2 h-100" id="stressCard">
+                    <small class="text-{{ data.active.color }} text-uppercase fw-bold" id="stressTitle">Mortality Risk Index</small>
+                    <h2 class="my-2 fw-bold text-{{ data.active.color }}" id="metricStress">{{ data.active.adjusted_stress }} <span class="fs-5">°C</span></h2>
+                    <small class="text-secondary">WBGT: <span id="metricRaw">{{ data.active.wbgt }}</span>°C &times; Vulnerability: <strong id="metricMult">{{ data.active.multiplier }}</strong></small>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5-Day Hourly Predictive Early Warning Chart -->
+        <div class="card shadow-sm border-0 mb-4">
+            <div class="card-header bg-white py-3">
+                <h5 class="card-title mb-0">5-Day Predictive Hospitalization Risk (Hourly MRI)</h5>
+                <small class="text-muted">Proactive projection to anticipate demographic hospitalization spikes 3 to 5 days in advance.</small>
+            </div>
+            <div class="card-body">
+                <canvas id="heatForecastChart" style="max-height: 380px;"></canvas>
+            </div>
+        </div>
+
+        <!-- Emergency Action & Administration Trigger Panel -->
+        <div class="card shadow-sm border-0">
+            <div class="card-body d-flex flex-column flex-md-row justify-content-between align-items-md-center">
+                <div>
+                    <h5 class="card-title mb-1">Disaster Management & Municipal Interventions</h5>
+                    <p class="text-muted mb-md-0 small">
+                        Automated triggers link directly to NDMA Common Alerting Protocol (CAP) and BBMP heat action plans.
+                    </p>
+                </div>
+                <div>
+                    <button class="btn btn-outline-danger" onclick="triggerAlertSimulation()">
+                        Test Emergency Alert Dispatch
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const wardMapData = {{ data.ward_map | tojson }};
+        const activeWardKey = "{{ data.active.name }}";
+
+        const map = L.map('wardMap').setView([12.9800, 77.6200], 11);
+
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 18,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        Object.values(wardMapData).forEach(ward => {
+            const circle = L.circle([ward.lat, ward.lon], {
+                color: ward.hex_color,
+                fillColor: ward.hex_color,
+                fillOpacity: 0.5,
+                radius: 1800
+            }).addTo(map);
+
+            circle.bindPopup(`
+                <strong>${ward.name}</strong><br/>
+                Outdoor WBGT: <b>${ward.wbgt}°C</b><br/>
+                Mortality Risk Index: <b>${ward.adjusted_stress}</b><br/>
+                Status: <span style="color:${ward.hex_color}; font-weight:bold;">${ward.risk_level}</span><br/>
+                <button class="btn btn-sm btn-dark mt-2" onclick="selectWard('${ward.name}')">View Forecast</button>
+            `);
+        });
+
+        const ctx = document.getElementById('heatForecastChart').getContext('2d');
+        let heatChart;
+
+        function buildChart(timestamps, temperatures) {
+            const formattedLabels = timestamps.map(ts => {
+                const date = new Date(ts);
+                return date.toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            });
+
+            if (heatChart) {
+                heatChart.destroy();
+            }
+
+            heatChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: formattedLabels,
+                    datasets: [{
+                        label: 'Forecasted Mortality Risk Index', // <-- Changed label
+                        data: temperatures, // This now receives the MRI data from backend
+                        borderColor: '#dc3545',
+                        backgroundColor: 'rgba(220, 53, 69, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 1,
+                        pointHoverRadius: 5
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    scales: {
+                        x: {
+                            ticks: { display: false },
+                            grid: { display: false }
+                        },
+                        y: {
+                            title: {
+                                display: true,
+                                text: 'Mortality Risk Index (MRI)', // <-- Changed Y-axis title
+                                padding: { bottom: 0 }
+                            },
+                            suggestedMin: 20,
+                            suggestedMax: 60 // <-- Increased to accommodate Red Alert spikes
+                        }
+                    },
+                    plugins: {
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    // <-- Removed °C and updated tooltip text
+                                    return `MRI Score: ${context.parsed.y}`; 
+                                }
+                            }
+                        }
+                    }
+                },
+                plugins: [{
+                    id: 'thresholdLine',
+                    afterDraw(chart) {
+                        const { ctx, chartArea: { left, right }, scales: { y } } = chart;
+                        const yVal = y.getPixelForValue(35.0); // Draws at 35 (Hospitalization Spike)
+                        
+                        ctx.save();
+                        ctx.strokeStyle = '#fd7e14'; // Orange color for Danger threshold
+                        ctx.lineWidth = 2;
+                        ctx.setLineDash([5, 5]); // Dashed warning line
+                        ctx.beginPath();
+                        ctx.moveTo(left, yVal);
+                        ctx.lineTo(right, yVal);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+                }]
+            });
+        }
+
+        buildChart(wardMapData[activeWardKey].forecast_times, wardMapData[activeWardKey].forecast_temps);
+
+        function handleDropdownChange(wardName) {
+            if (!wardName) return;
+            selectWard(wardName);
+        }
+
+        function selectWard(wardName) {
+            const ward = wardMapData[wardName];
+            if (!ward) return;
+
+            // Sync Dropdown
+            const dropdown = document.getElementById('wardDropdown');
+            if (dropdown) dropdown.value = ward.name;
+
+            // Update Header & Badges
+            document.getElementById('activeWardBadge').innerText = `Ward: ${ward.name}`;
+            document.getElementById('alertTitle').innerText = `Current Heat Risk Assessment: ${ward.name}`;
+            document.getElementById('alertRiskBadge').innerText = ward.risk_level;
+            
+            // Update the New Split Directives (This is what was crashing!)
+            document.getElementById('occDirective').innerText = ward.occ_directive;
+            document.getElementById('munAction').innerText = ward.mun_action;
+
+            // Update Banner Colors
+            const alertCard = document.getElementById('alertCard');
+            const alertHeader = document.getElementById('alertCardHeader');
+            alertCard.className = `card shadow-sm border-${ward.color} mb-4`;
+            alertHeader.className = `card-header bg-${ward.color} text-white d-flex justify-content-between align-items-center`;
+
+            // Update All Metric Cards
+            document.getElementById('metricTemp').innerText = ward.temp;
+            document.getElementById('metricHumidity').innerText = ward.humidity;
+            document.getElementById('metricWind').innerText = ward.wind;
+            document.getElementById('metricWbgt').innerText = ward.wbgt;
+            document.getElementById('metricStress').innerText = ward.adjusted_stress;
+            document.getElementById('metricRaw').innerText = ward.wbgt;
+            document.getElementById('metricMult').innerText = `${ward.multiplier}x`;
+
+            // Update Mortality Risk Index Card Styling
+            const stressCard = document.getElementById('stressCard');
+            const stressTitle = document.getElementById('stressTitle');
+            const metricStress = document.getElementById('metricStress');
+            stressCard.className = `card metric-card shadow-sm border-${ward.color} bg-white p-3 text-center border-2 h-100`;
+            stressTitle.className = `text-${ward.color} text-uppercase fw-bold`;
+            metricStress.className = `my-2 fw-bold text-${ward.color}`;
+
+            // Pan Map, Close Popups & Redraw Chart
+            map.closePopup();
+            map.flyTo([ward.lat, ward.lon], 12);
+            buildChart(ward.forecast_times, ward.forecast_temps);
+        }
+
+       function triggerAlertSimulation() {
+    fetch('/send-test-alert', { method: 'POST' })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'sent') {
+                alert(`SMS sent! Twilio message SID: ${res.sid}`);
+            } else {
+                alert(`Failed to send: ${res.error}`);
+            }
+        })
+        .catch(err => alert('Request failed: ' + err));
+}
+    </script>
+</body>
+</html>
