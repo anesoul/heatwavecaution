@@ -39,29 +39,37 @@
             <span class="navbar-brand mb-0 h1">
                 MoES | Human Thermal Stress Early Warning System
             </span>
-            <span class="badge bg-secondary" id="activeWardBadge">Ward: {{ data.active.name }}</span>
+            <span class="badge bg-secondary" id="activeWardBadge">Acquiring GPS...</span>
         </div>
     </nav>
+
+    <!-- Flash Error Message Container -->
+    <div class="container mt-3">
+        <div id="flashMessage" class="alert alert-danger d-none alert-dismissible fade show shadow-sm border-0" role="alert">
+            <strong id="flashTitle">System Alert: </strong> <span id="flashText">Error message here.</span>
+            <button type="button" class="btn-close" onclick="document.getElementById('flashMessage').classList.add('d-none')"></button>
+        </div>
+    </div>
 
     <div class="container mb-5">
 
         <!-- Top Alert & Advisory Banner -->
-        <div class="card shadow-sm border-{{ data.active.color }} mb-4" id="alertCard">
-            <div class="card-header bg-{{ data.active.color }} text-white d-flex justify-content-between align-items-center" id="alertCardHeader">
-                <h5 class="mb-0" id="alertTitle">Current Heat Risk Assessment: {{ data.active.name }}</h5>
-                <span class="badge bg-light text-dark fs-6" id="alertRiskBadge">{{ data.active.risk_level }}</span>
+        <div class="card shadow-sm border-secondary mb-4" id="alertCard">
+            <div class="card-header bg-secondary text-white d-flex justify-content-between align-items-center" id="alertCardHeader">
+                <h5 class="mb-0" id="alertTitle">Current Heat Risk Assessment: System Standby</h5>
+                <span class="badge bg-light text-dark fs-6" id="alertRiskBadge">PENDING</span>
             </div>
             <div class="card-body">
                 <div class="row">
                     <!-- Occupational Directive Column -->
                     <div class="col-md-6 border-end border-sm-0 mb-3 mb-md-0">
                         <h6 class="mb-2 text-uppercase fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">Outdoor Activity Advisory (WBGT)</h6>
-                        <p class="text-muted fs-6 mb-0 text-dark"><span id="occDirective">{{ data.active.occ_directive }}</span></p>
+                        <p class="text-muted fs-6 mb-0 text-dark"><span id="occDirective">Awaiting location data to generate occupational advisories.</span></p>
                     </div>
                     <!-- Municipal Action Column -->
                     <div class="col-md-6">
                         <h6 class="mb-2 text-uppercase fw-bold" style="font-size: 0.85rem; letter-spacing: 0.5px;">Municipal Action (Mortality Index)</h6>
-                        <p class="text-muted fs-6 mb-0 text-dark"><span id="munAction">{{ data.active.mun_action }}</span></p>
+                        <p class="text-muted fs-6 mb-0 text-dark"><span id="munAction">Awaiting location data to calculate hospitalization risk.</span></p>
                     </div>
                 </div>
             </div>
@@ -71,18 +79,16 @@
         <div class="card shadow-sm border-0 mb-4">
             <div class="card-header bg-white py-3 d-flex flex-column flex-md-row justify-content-between align-items-md-center gap-2">
                 <div>
-                    <h5 class="card-title mb-0">Continuous Urban Heat Hazard Map</h5>
+                    <h5 class="card-title mb-0">National Thermal Hazard Map</h5>
                     <small class="text-muted">Dynamic thermal gradient with microclimate vulnerability offsets.</small>
                 </div>
-                <div style="min-width: 280px;">
-                    <select id="wardDropdown" class="form-select border-primary fw-semibold" onchange="handleDropdownChange(this.value)">
-                        <option value="" disabled selected>-- Jump to Ward / Zone --</option>
-                        {% for ward in data.all_wards %}
-                        <option value="{{ ward.name }}">
-                            {{ ward.name }} ({{ ward.adjusted_stress }}°C)
-                        </option>
-                        {% endfor %}
-                    </select>
+                <div style="min-width: 320px;">
+                    <div class="input-group">
+                        <button class="btn btn-outline-secondary" type="button" id="gpsBtn" onclick="locateUserGPS()">📍</button>
+                        <!-- New Search Bar -->
+                        <input type="text" id="searchInput" class="form-control border-primary" placeholder="Search city or ward (e.g. Nagpur, Andheri)">
+                        <button class="btn btn-primary fw-bold" onclick="searchAndMapLocation()" id="searchBtn">Locate</button>
+                    </div>
                 </div>
             </div>
             <div class="card-body p-2">
@@ -95,36 +101,36 @@
             <div class="col-lg col-md-4 col-sm-6">
                 <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
                     <small class="text-muted text-uppercase fw-bold">Dry-Bulb Temp</small>
-                    <h2 class="my-2 fw-bold text-dark"><span id="metricTemp">{{ data.active.temp }}</span> <span class="fs-5">°C</span></h2>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricTemp">--</span> <span class="fs-5">°C</span></h2>
                     <small class="text-secondary">Ambient Air</small>
                 </div>
             </div>
             <div class="col-lg col-md-4 col-sm-6">
                 <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
                     <small class="text-muted text-uppercase fw-bold">Relative Humidity</small>
-                    <h2 class="my-2 fw-bold text-dark"><span id="metricHumidity">{{ data.active.humidity }}</span> <span class="fs-5">%</span></h2>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricHumidity">--</span> <span class="fs-5">%</span></h2>
                     <small class="text-secondary">Moisture Saturation</small>
                 </div>
             </div>
             <div class="col-lg col-md-4 col-sm-6">
                 <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
                     <small class="text-muted text-uppercase fw-bold">Wind Speed</small>
-                    <h2 class="my-2 fw-bold text-dark"><span id="metricWind">{{ data.active.wind }}</span> <span class="fs-5">km/h</span></h2>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricWind">--</span> <span class="fs-5">km/h</span></h2>
                     <small class="text-secondary">Convective Cooling</small>
                 </div>
             </div>
             <div class="col-lg col-md-6 col-sm-6">
                 <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
                     <small class="text-muted text-uppercase fw-bold">Outdoor WBGT</small>
-                    <h2 class="my-2 fw-bold text-dark"><span id="metricWbgt">{{ data.active.wbgt }}</span> <span class="fs-5">°C</span></h2>
+                    <h2 class="my-2 fw-bold text-dark"><span id="metricWbgt">--</span> <span class="fs-5">°C</span></h2>
                     <small class="text-secondary">ISO 7243 Labor Index</small>
                 </div>
             </div>
             <div class="col-lg col-md-6 col-sm-12">
-                <div class="card metric-card shadow-sm border-{{ data.active.color }} bg-white p-3 text-center border-2 h-100" id="stressCard">
-                    <small class="text-{{ data.active.color }} text-uppercase fw-bold" id="stressTitle">Mortality Risk Index</small>
-                    <h2 class="my-2 fw-bold text-{{ data.active.color }}" id="metricStress">{{ data.active.adjusted_stress }} <span class="fs-5">°C</span></h2>
-                    <small class="text-secondary">WBGT: <span id="metricRaw">{{ data.active.wbgt }}</span>°C &times; Vulnerability: <strong id="metricMult">{{ data.active.multiplier }}</strong></small>
+                <div class="card metric-card shadow-sm border-secondary bg-white p-3 text-center border-2 h-100" id="stressCard">
+                    <small class="text-secondary text-uppercase fw-bold" id="stressTitle">Mortality Risk Index</small>
+                    <h2 class="my-2 fw-bold text-dark" id="metricStress">--</h2>                    
+                    <small class="text-secondary">WBGT: <span id="metricRaw">--</span>°C &times; Vulnerability: <strong id="metricMult">--</strong></small>
                 </div>
             </div>
         </div>
@@ -159,32 +165,19 @@
     </div>
 
     <script>
-        const wardMapData = {{ data.ward_map | tojson }};
-        const activeWardKey = "{{ data.active.name }}";
-
-        const map = L.map('wardMap').setView([12.9800, 77.6200], 11);
+        // 1. Initialize empty state (No Jinja!)
+        const wardMapData = {};
+        
+        // Option B: Registry mapping place names to active Leaflet circle instances
+        const activeCircles = {};
+        
+        // 2. Center default map over India (Lat: 21.0, Lon: 78.0, Zoom: 5)
+        const map = L.map('wardMap').setView([21.0000, 78.0000], 5);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            maxZoom: 18,
+            maxZoom: 19,
             attribution: '© OpenStreetMap contributors'
         }).addTo(map);
-
-        Object.values(wardMapData).forEach(ward => {
-            const circle = L.circle([ward.lat, ward.lon], {
-                color: ward.hex_color,
-                fillColor: ward.hex_color,
-                fillOpacity: 0.5,
-                radius: 1800
-            }).addTo(map);
-
-            circle.bindPopup(`
-                <strong>${ward.name}</strong><br/>
-                Outdoor WBGT: <b>${ward.wbgt}°C</b><br/>
-                Mortality Risk Index: <b>${ward.adjusted_stress}</b><br/>
-                Status: <span style="color:${ward.hex_color}; font-weight:bold;">${ward.risk_level}</span><br/>
-                <button class="btn btn-sm btn-dark mt-2" onclick="selectWard('${ward.name}')">View Forecast</button>
-            `);
-        });
 
         const ctx = document.getElementById('heatForecastChart').getContext('2d');
         let heatChart;
@@ -263,21 +256,136 @@
                 }]
             });
         }
-
-        buildChart(wardMapData[activeWardKey].forecast_times, wardMapData[activeWardKey].forecast_temps);
-
-        function handleDropdownChange(wardName) {
-            if (!wardName) return;
-            selectWard(wardName);
+        
+        function showFlashError(message) {
+            document.getElementById('flashText').innerText = message;
+            document.getElementById('flashMessage').classList.remove('d-none');
         }
+
+        function renderNewCity(data) {
+            document.getElementById('flashMessage').classList.add('d-none');
+            wardMapData[data.name] = data;
+
+            // Remove an existing circle only if this exact location was already searched
+            if (activeCircles[data.name]) {
+                map.removeLayer(activeCircles[data.name]);
+            }
+
+            const circle = L.circle([data.lat, data.lon], {
+                color: data.hex_color,
+                fillColor: data.hex_color,
+                fillOpacity: 0.5,
+                radius: data.scan_radius 
+            }).addTo(map);
+
+            circle.bindPopup(`
+                <strong>${data.name}</strong><br/>
+                Outdoor WBGT: <b>${data.wbgt}°C</b><br/>
+                Mortality Risk Index: <b>${data.adjusted_stress}</b><br/>
+                Status: <span style="color:${data.hex_color}; font-weight:bold;">${data.risk_level}</span><br/>
+                <button class="btn btn-sm btn-dark mt-2" onclick="selectWard('${data.name}')">View Forecast</button>
+            `);
+
+            activeCircles[data.name] = circle;
+            selectWard(data.name);
+        }
+
+        // NEW REUSABLE GPS FUNCTION
+        function locateUserGPS() {
+            const gpsBtn = document.getElementById('gpsBtn');
+            if (gpsBtn) {
+                gpsBtn.disabled = true;
+                gpsBtn.innerText = "⏳";
+            }
+
+            if (navigator.geolocation) {
+                document.getElementById('activeWardBadge').innerText = "Processing live map data...";
+                
+                navigator.geolocation.getCurrentPosition(
+                    function(position) {
+                        const lat = position.coords.latitude;
+                        const lon = position.coords.longitude;
+                        
+                        fetch(`/search?lat=${lat}&lon=${lon}`)
+                            .then(res => res.json())
+                            .then(data => {
+                                if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.innerText = "📍"; }
+                                if (data.error) {
+                                    showFlashError(data.error);
+                                    document.getElementById('activeWardBadge').innerText = "Standby - API Error";
+                                } else {
+                                    renderNewCity(data);
+                                }
+                            })
+                            .catch(err => {
+                                if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.innerText = "📍"; }
+                                showFlashError("Network block while fetching local GPS data.");
+                                document.getElementById('activeWardBadge').innerText = "Standby - Network Error";
+                            });
+                    },
+                    function(error) {
+                        // User clicked "Block" on location
+                        if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.innerText = "📍"; }
+                        document.getElementById('activeWardBadge').innerText = "Standby - Manual Input Required";
+                        showFlashError("Location access denied. Enter a city or ward in the search bar or check browser permissions.");
+                    }
+                );
+            } else {
+                if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.innerText = "📍"; }
+                showFlashError("Geolocation is not supported by this browser.");
+            }
+        }
+
+        // AUTO-LOCATE ON LOAD (Now just calls the function above!)
+        window.onload = function() {
+            // Draw a blank chart to hold the UI space
+            buildChart([], []);
+            // Fire the GPS automatically
+            locateUserGPS();
+        };
+
+        // UPDATED SEARCH BAR
+        function searchAndMapLocation() {
+            const searchInput = document.getElementById('searchInput').value;
+            const btn = document.getElementById('searchBtn');
+            
+            if (!searchInput) return;
+
+            btn.innerText = "Scanning...";
+            btn.disabled = true;
+
+            fetch(`/search?q=${encodeURIComponent(searchInput)}`)
+                .then(response => response.json())
+                .then(data => {
+                    btn.innerText = "Locate";
+                    btn.disabled = false;
+
+                    // This catches the python Exception and displays it!
+                    if (data.error) {
+                        showFlashError(data.error);
+                        return;
+                    }
+                    renderNewCity(data);
+                })
+                .catch(err => {
+                    btn.innerText = "Locate";
+                    btn.disabled = false;
+                    showFlashError("Fatal Network Error: Backend server is unreachable.");
+                });
+        }
+
+        // Optional: Allow the user to press "Enter" in the search bar to trigger the search
+        document.getElementById("searchInput").addEventListener("keypress", function(event) {
+            if (event.key === "Enter") {
+                event.preventDefault();
+                searchAndMapLocation();
+            }
+        });
 
         function selectWard(wardName) {
             const ward = wardMapData[wardName];
             if (!ward) return;
 
-            // Sync Dropdown
-            const dropdown = document.getElementById('wardDropdown');
-            if (dropdown) dropdown.value = ward.name;
 
             // Update Header & Badges
             document.getElementById('activeWardBadge').innerText = `Ward: ${ward.name}`;
