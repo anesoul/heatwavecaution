@@ -4,7 +4,7 @@ from app.sms import send_test_alert
 from app.utils import fetch_dynamic_location
 
 # Mock database of governments that have officially connected to our API
-registered_webhooks = {"Delhi": "https://webhook.site/0f917a2c-7806-4fec-9105-95f844a23314"}
+registered_webhooks = {}
 
 # Mock database of authorized API keys issued to municipalities by MoES
 AUTHORIZED_API_KEYS = {
