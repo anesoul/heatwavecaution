@@ -1,4 +1,4 @@
-import os 
+import os
 
 class Config:
     SECRET_KEY = os.environ.get("SECRET_KEY") or "you-will-never-guess"
@@ -10,16 +10,27 @@ class Config:
 
     # API Endpoints
     OPEN_METEO_BASE_URL = "https://api.open-meteo.com/v1/forecast"
+    OPEN_METEO_ARCHIVE_URL = "https://archive-api.open-meteo.com/v1/archive"
+    
+    NOMINATIM_REVERSE_URL = "https://nominatim.openstreetmap.org/reverse"
+    NOMINATIM_SEARCH_URL = "https://nominatim.openstreetmap.org/search"
+    
+    # Using multiple mirrors to bypass strict firewalls
+    OVERPASS_MIRRORS = [
+        "https://overpass-api.de/api/interpreter",
+        "https://lz4.overpass-api.de/api/interpreter",
+        "https://overpass.kumi.systems/api/interpreter"
+    ]
 
     # Official Occupational WBGT Thresholds (°C) - For display/reference only
-    WBGT_CAUTION = 28.0
-    WBGT_DANGER = 30.0
-    WBGT_EXTREME = 32.0
+    WBGT_CAUTION = 30.0
+    WBGT_DANGER = 32.0
+    WBGT_EXTREME = 34.0
 
     # Mortality Risk Index (MRI) Thresholds - Drives the Dashboard Colors & Alerts
-    THRESHOLD_CAUTION = 28.0  
-    THRESHOLD_DANGER = 35.0   
-    THRESHOLD_EXTREME = 50.0  
+    THRESHOLD_CAUTION = 30.0  
+    THRESHOLD_DANGER = 38.0   
+    THRESHOLD_EXTREME = 51.0  
 
     '''
     # Demographic Vulnerability Multipliers

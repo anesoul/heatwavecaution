@@ -85,8 +85,8 @@
                 <div style="min-width: 320px;">
                     <div class="input-group">
                         <button class="btn btn-outline-secondary" type="button" id="gpsBtn" onclick="locateUserGPS()">📍</button>
-                        <!-- New Search Bar -->
-                        <input type="text" id="searchInput" class="form-control border-primary" placeholder="Search city or ward (e.g. Nagpur, Andheri)">
+                        <!-- Search Bar -->
+                        <input type="text" id="searchInput" class="form-control border-primary" placeholder="Search area">
                         <button class="btn btn-primary fw-bold" onclick="searchAndMapLocation()" id="searchBtn">Locate</button>
                     </div>
                 </div>
@@ -96,7 +96,7 @@
             </div>
         </div>
 
-        <!-- Live Meteorological & Impact Metric Cards (5 Cards) -->
+        <!-- Live Meteorological & Impact Metric Cards -->
         <div class="row g-3 mb-4">
             <div class="col-lg col-md-4 col-sm-6">
                 <div class="card metric-card shadow-sm border-0 bg-white p-3 text-center h-100">
@@ -165,13 +165,10 @@
     </div>
 
     <script>
-        // 1. Initialize empty state (No Jinja!)
         const wardMapData = {};
-        
-        // Option B: Registry mapping place names to active Leaflet circle instances
+    
         const activeCircles = {};
         
-        // 2. Center default map over India (Lat: 21.0, Lon: 78.0, Zoom: 5)
         const map = L.map('wardMap').setView([21.0000, 78.0000], 5);
 
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -197,8 +194,8 @@
                 data: {
                     labels: formattedLabels,
                     datasets: [{
-                        label: 'Forecasted Mortality Risk Index', // <-- Changed label
-                        data: temperatures, // This now receives the MRI data from backend
+                        label: 'Forecasted Mortality Risk Index',
+                        data: temperatures,
                         borderColor: '#dc3545',
                         backgroundColor: 'rgba(220, 53, 69, 0.1)',
                         borderWidth: 2,
@@ -219,18 +216,17 @@
                         y: {
                             title: {
                                 display: true,
-                                text: 'Mortality Risk Index (MRI)', // <-- Changed Y-axis title
+                                text: 'Mortality Risk Index (MRI)',
                                 padding: { bottom: 0 }
                             },
                             suggestedMin: 20,
-                            suggestedMax: 60 // <-- Increased to accommodate Red Alert spikes
+                            suggestedMax: 60
                         }
                     },
                     plugins: {
                         tooltip: {
                             callbacks: {
                                 label: function(context) {
-                                    // <-- Removed °C and updated tooltip text
                                     return `MRI Score: ${context.parsed.y}`; 
                                 }
                             }
@@ -241,7 +237,7 @@
                     id: 'thresholdLine',
                     afterDraw(chart) {
                         const { ctx, chartArea: { left, right }, scales: { y } } = chart;
-                        const yVal = y.getPixelForValue(35.0); // Draws at 35 (Hospitalization Spike)
+                        const yVal = y.getPixelForValue(38.0); // Draws at 38 (Hospitalization Spike)
                         
                         ctx.save();
                         ctx.strokeStyle = '#fd7e14'; // Orange color for Danger threshold
@@ -290,7 +286,6 @@
             selectWard(data.name);
         }
 
-        // NEW REUSABLE GPS FUNCTION
         function locateUserGPS() {
             const gpsBtn = document.getElementById('gpsBtn');
             if (gpsBtn) {
@@ -324,10 +319,9 @@
                             });
                     },
                     function(error) {
-                        // User clicked "Block" on location
                         if (gpsBtn) { gpsBtn.disabled = false; gpsBtn.innerText = "📍"; }
                         document.getElementById('activeWardBadge').innerText = "Standby - Manual Input Required";
-                        showFlashError("Location access denied. Enter a city or ward in the search bar or check browser permissions.");
+                        showFlashError("Location access denied. Enter the name of a place in the search bar or check browser permissions.");
                     }
                 );
             } else {
@@ -336,11 +330,9 @@
             }
         }
 
-        // AUTO-LOCATE ON LOAD (Now just calls the function above!)
+        // AUTO-LOCATE ON LOAD
         window.onload = function() {
-            // Draw a blank chart to hold the UI space
             buildChart([], []);
-            // Fire the GPS automatically
             locateUserGPS();
         };
 
@@ -360,7 +352,6 @@
                     btn.innerText = "Locate";
                     btn.disabled = false;
 
-                    // This catches the python Exception and displays it!
                     if (data.error) {
                         showFlashError(data.error);
                         return;
@@ -374,7 +365,6 @@
                 });
         }
 
-        // Optional: Allow the user to press "Enter" in the search bar to trigger the search
         document.getElementById("searchInput").addEventListener("keypress", function(event) {
             if (event.key === "Enter") {
                 event.preventDefault();
@@ -388,11 +378,11 @@
 
 
             // Update Header & Badges
-            document.getElementById('activeWardBadge').innerText = `Ward: ${ward.name}`;
+            document.getElementById('activeWardBadge').innerText = `Location: ${ward.name}`;
             document.getElementById('alertTitle').innerText = `Current Heat Risk Assessment: ${ward.name}`;
             document.getElementById('alertRiskBadge').innerText = ward.risk_level;
             
-            // Update the New Split Directives (This is what was crashing!)
+            // Update the New Split Directives
             document.getElementById('occDirective').innerText = ward.occ_directive;
             document.getElementById('munAction').innerText = ward.mun_action;
 
