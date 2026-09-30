@@ -15,7 +15,7 @@ Open your terminal or command prompt and clone the project:
 ```bash
 git clone https://github.com/anesoul/heatwavecaution.git
 cd heatwavecaution
-
+```
 ### 2. Create a Virtual Environment
 Isolating dependencies ensures the app doesn't interfere with other Python projects on your machine.
 
@@ -23,6 +23,10 @@ Isolating dependencies ensures the app doesn't interfere with other Python proje
 ```cmd
 python -m venv venv
 venv\Scripts\activate
-
-python3 -m venv venv
+```
+**For Linux/macOS**
+```cmd
+python3 -m venv venv:
 source venv/bin/activate
+```
+
