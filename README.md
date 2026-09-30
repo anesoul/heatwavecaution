@@ -3,8 +3,8 @@
 A production-grade, B2G-compliant heatwave monitoring system built for the Ministry of Earth Sciences (MoES). This platform calculates dynamic Mortality Risk Indices (MRI) using hyper-local spatial vulnerability (OSM) and 5-year physiological acclimatization baselines. It features an autonomous background radar using `APScheduler` that automatically routes CAP-compliant emergency webhooks to connected government/NDMA endpoints.
 
 ## Pre-requisites
-* **Python 3.9+** installed on your system.
-* **Git** installed.
+* **Python 3.9+** installed on your system
+* **Git** installed
 
 ## Installation & Setup
 
