@@ -1,4 +1,4 @@
-# heatwavecaution - MoES Heatwave Early Warning System (SIH 2026)
+# AEGIS Thermal - MoES Heatwave Early Warning System (SIH 2026)
 
 A production-grade, B2G-compliant heatwave monitoring system built for the Ministry of Earth Sciences (MoES). This platform calculates dynamic Mortality Risk Indices (MRI) using hyper-local spatial vulnerability (OSM) and 5-year physiological acclimatization baselines. It features an autonomous background radar using `APScheduler` that automatically routes CAP-compliant emergency webhooks to connected government/NDMA endpoints.
 
